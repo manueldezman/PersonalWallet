@@ -1,47 +1,55 @@
-//SPDX-License-Identifier: GPT-3
+// SPDX-License-Identifier: GPT-3
 
-pragma solidity ^0.8.7;
+pragma solidity >=0.8.2 <0.9.0;
 
-contract  Wallet {
-    address payable public owner;
-    uint private contractBalance = address(this).balance;
+contract MyWallet {
 
-    mapping (address => uint) public balances;
+    // State variable
 
-    uint private ownerBalance = balances[owner];
+    address private owner;
 
-    constructor() {
+    struct transaction {
+        address sender;
+        uint256 amount;
+        uint256 time;
+        string tx_type;
 
-        //make the contract creator the owner
-
-        owner = payable(msg.sender);
     }
 
-    function getBalance() public view returns(uint) {
-       require(msg.sender == owner, "only owner can check Balance");
-       return contractBalance;
-   }
+    transaction[] public transactions;
 
-    function Send(address payable receiver, uint amount) public {
-        require(msg.sender == owner, "only owner can Send");
-        require(amount <= contractBalance, "Insuffient Funds");
-        
-        contractBalance -= amount;
-        balances[receiver] += amount;
+    constructor () {
+
+        // make contract deployer the owner
+
+        owner = msg.sender;
     }
 
-    function Withdraw(uint amount) public {
-        require(msg.sender == owner, "only owner can withdraw");
-        require(amount <= contractBalance, "Insuffient Funds");
 
-        contractBalance -= amount;
-        ownerBalance += amount;
+    function depositToken() public payable {
+        require(msg.value > 0, "you cant send zero ETH");
+        transactions.push(transaction(msg.sender, msg.value, block.timestamp, "Recieved"));
     }
 
-    function FundWallet(uint amount) public {
-        require(amount <= ownerBalance, "Insuffient Funds");
+    function checkBalance() public view returns(uint256) {
+        require(msg.sender == owner, "You are not the wallet owner");
+        return address(this).balance;
+    }
 
-        balances[owner] -= amount; 
-        contractBalance += amount;  
+    function sendToken(address to, uint amount) public {
+        require(msg.sender == owner, "You are not the wallet owner");
+        require(amount <= address(this).balance, "Insufficient Funds");
+        payable(to).transfer(amount);
+        transactions.push(transaction(address(this), amount, block.timestamp, "Sent"));
+    }
+
+    function withdrawToken(uint amount) public {
+        require(msg.sender == owner, "You are not the wallet owner");
+        require(amount <= address(this).balance, "Insufficient Funds");
+        payable(owner).transfer(amount);
+        transactions.push(transaction(address(this), amount, block.timestamp, "Withdrawn"));
+    }
+    function GetTrnxHistory() public view returns (transaction[] memory) {
+        return transactions;
     }
 }
